@@ -56,6 +56,10 @@ class algebraic
 {
     // Private data
 
+    dimensionedScalar residualRe_;
+
+    bool turbulenceCorrect_;
+    
 public:
 
     //- Runtime type information

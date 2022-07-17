@@ -1,0 +1,5 @@
+SOURCE += incompressibleTwoPhaseInteractingMixture/incompressibleTwoPhaseInteractingMixture.C
+SOURCE += compressibleTurbulenceModels.C
+SOURCE += driftFluxFoamPlus.C
+
+EXE = $(FOAM_APPBIN)/driftFluxFoamPlus

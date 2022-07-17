@@ -48,7 +48,9 @@ Foam::relativeVelocityModels::algebraic::algebraic
     const incompressibleTwoPhaseInteractingMixture& mixture
 )
 :
-    relativeVelocityModel(dict, mixture)
+    relativeVelocityModel(dict, mixture),
+    residualRe_("residualRe", dimless, dict),
+    turbulenceCorrect_(dict.getOrDefault("turbulenceCorrect", false))
 {}
 
 
@@ -69,15 +71,15 @@ void Foam::relativeVelocityModels::algebraic::correct()
     volVectorField Ucm(betad*Udm_/betac);
 
     // particle Reynolds number
-    volScalarField Re_p(alphac_ * rhoc_ * mixture_.dd() * mag(Udm_ - Ucm) / (mixture_.nucModel().nu() * rhoc_));
+    volScalarField Re_p(alphac_ * rhoc_ * mixture_.dd() * mag(Udm_ - Ucm) / (mixture_.nucModel().nu() * rhoc_) + residualRe_);
 
-    volScalarField Cd(1. + 0.15 * pow(Re_p, 0.687));
+    volScalarField fd(1. + 0.15 * pow(Re_p, 0.687));
 
     forAll(Re_p, i)
     {
         if (Re_p[i] >= 1000)
         {
-            Cd[i] = 0.0183 * Re_p[i];
+            fd[i] = 0.0183 * Re_p[i];
         }
     }
 
@@ -93,13 +95,20 @@ void Foam::relativeVelocityModels::algebraic::correct()
     */
     volVectorField a(g - mixture_.U()*fvc::div(mixture_.U()) - fvc::ddt(mixture_.U()));
 
-    volVectorField Udc((rhod_-rho())*pow(mixture_.dd(),2)/18/(mixture_.nucModel().nu()*rhoc_)/Cd*a);
+    volVectorField Udc((rhod_-rho())*pow(mixture_.dd(),2)/18/(mixture_.nucModel().nu()*rhoc_)/fd*a);
 
+    const volScalarField &nut = mixture_.U().mesh().lookupObject<volScalarField>("nut");
+
+    if(turbulenceCorrect_)
+    {
+        Udc -= nut*(fvc::grad(alphad_)/alphad_ - fvc::grad(alphac_)/alphac_);
+    }
+    
     //volScalarField tau_p(rhod_* mixture_.dd() * mixture_.dd() / 18 / (mixture_.nucModel().nu() * rhoc_));
 
     //volScalarField K(3 / 4 / mixture_.dd() * rhoc_ * Cd * pow(alphac_, -1.65) * (1 - alphac_) * mag(Udm_ - Ucm));
 
-    Udm_ = Udc;
+    Udm_ = alphac_ * Udc;
 }
 
 
